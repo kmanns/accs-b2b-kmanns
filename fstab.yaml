@@ -1,0 +1,7 @@
+mountpoints:
+  /:
+    url: https://content.da.live/kmanns/accs-b2b-kmanns/
+    type: markup
+
+folders:
+  /products/: /products/default
