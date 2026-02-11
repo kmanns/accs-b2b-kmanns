@@ -59,6 +59,24 @@ function stripXssiPrefix(text) {
   return text;
 }
 
+function isLikelySaasGateway(url) {
+  try {
+    const u = new URL(url, window.location.origin);
+    return u.hostname.endsWith('.api.commerce.adobe.com');
+  } catch (e) {
+    return false;
+  }
+}
+
+function isSameOrigin(url) {
+  try {
+    const u = new URL(url, window.location.origin);
+    return u.origin === window.location.origin;
+  } catch (e) {
+    return false;
+  }
+}
+
 async function commerceGraphQL({ endpoint, headers = {}, query, variables }) {
   if (!endpoint) {
     throw new Error('Missing graphqlEndpoint (expected config key "commerce-endpoint").');
@@ -80,8 +98,19 @@ async function commerceGraphQL({ endpoint, headers = {}, query, variables }) {
 
     rawText = await res.text();
   } catch (e) {
-    // This is the classic browser CORS / blocked request error
-    throw new Error(`Failed to fetch (likely CORS/proxy). ${e?.message || e}`);
+    // Browser throws "Failed to fetch" for CORS / blocked mixed content / DNS failures.
+    const saas = isLikelySaasGateway(endpoint);
+    const sameOrigin = isSameOrigin(endpoint);
+
+    if (saas && !sameOrigin) {
+      throw new Error(
+        `Failed to fetch (CORS). Your "commerce-endpoint" points to the Commerce SaaS gateway, which is usually blocked by browsers.\n`
+        + `Fix: set config "commerce-endpoint" to a SAME-ORIGIN proxy path like "/graphql" (or "/api/graphql"), and configure your edge/CDN to forward it to the SaaS URL.\n`
+        + `Current endpoint: ${endpoint}`,
+      );
+    }
+
+    throw new Error(`Failed to fetch (network/CORS). Endpoint: ${endpoint}`);
   }
 
   if (!res.ok) {
@@ -136,6 +165,12 @@ export async function renderClosestPickupLocations(
     eventName = 'bopis/pickup-location-selected',
   } = {},
 ) {
+  // Allow an optional same-origin override while testing:
+  // <div class="commerce-checkout" data-graphql-endpoint="/graphql">
+  // This is NOT hardcoding in JS; it’s a page-level override.
+  const override = $container.closest('.commerce-checkout')?.getAttribute('data-graphql-endpoint');
+  const effectiveEndpoint = override || graphqlEndpoint;
+
   $container.innerHTML = `
     <div class="pickup-selector">
       <h2 class="checkout__block">Pick up in store</h2>
@@ -159,7 +194,7 @@ export async function renderClosestPickupLocations(
   let stores = [];
   try {
     const data = await commerceGraphQL({
-      endpoint: graphqlEndpoint,
+      endpoint: effectiveEndpoint,
       headers: graphqlHeaders,
       query: PICKUP_LOCATIONS_ALL,
       variables: { pageSize },
@@ -170,7 +205,7 @@ export async function renderClosestPickupLocations(
       .map(normalizePickupLocation)
       .filter((s) => s.code && Number.isFinite(s.lat) && Number.isFinite(s.lng));
   } catch (e) {
-    $status.textContent = `Couldn’t load pickup locations: ${e.message}`;
+    $status.textContent = `Couldn’t load pickup locations: ${String(e.message || e)}`;
     return;
   }
 
