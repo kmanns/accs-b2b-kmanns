@@ -59,11 +59,9 @@ function stripXssiPrefix(text) {
   return text;
 }
 
-async function commerceGraphQL({ endpoint, headers = {}, query, variables }) {
+async function commerceGraphQL({ endpoint, query, variables }) {
   if (!endpoint) {
-    throw new Error(
-      'Missing graphqlEndpoint. Set config "endpoints.commerce-core-endpoint" (or "commerce-core-endpoint") to your Commerce GraphQL endpoint.',
-    );
+    throw new Error('Missing graphqlEndpoint.');
   }
 
   let res;
@@ -74,20 +72,13 @@ async function commerceGraphQL({ endpoint, headers = {}, query, variables }) {
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
-        ...headers,
       },
       body: JSON.stringify({ query, variables }),
       credentials: 'include',
     });
-
     rawText = await res.text();
   } catch (e) {
-    // Browser throws TypeError("Failed to fetch") for CORS, DNS, blocked mixed content, etc.
-    throw new Error(
-      `Network error calling GraphQL endpoint. This is usually CORS/proxy related. `
-      + `Use the CDN/proxied Storefront endpoint from config (endpoints.commerce-core-endpoint) instead of the SaaS gateway URL. `
-      + `Original error: ${e?.message || e}`,
-    );
+    throw new Error(`Network error ("Failed to fetch"): ${e?.message || e}`);
   }
 
   if (!res.ok) {
@@ -134,7 +125,7 @@ export async function renderClosestPickupLocations(
   $container,
   {
     graphqlEndpoint,
-    graphqlHeaders = {},
+    endpointKeysTried = [],
     eventsBus,
     pageSize = 200,
     maxResults = 5,
@@ -151,14 +142,23 @@ export async function renderClosestPickupLocations(
         <button type="button" class="pickup-selector__geo-btn">Use my location</button>
       </div>
 
+      <div class="checkout__block pickup-selector__debug" style="font-size: 12px; opacity: 0.8;"></div>
       <div class="checkout__block pickup-selector__status" aria-live="polite"></div>
       <div class="checkout__block pickup-selector__results"></div>
     </div>
   `;
 
+  const $debug = $container.querySelector('.pickup-selector__debug');
   const $status = $container.querySelector('.pickup-selector__status');
   const $results = $container.querySelector('.pickup-selector__results');
   const $geoBtn = $container.querySelector('.pickup-selector__geo-btn');
+
+  // Show what we resolved (or what keys we tried)
+  if (graphqlEndpoint) {
+    $debug.textContent = `GraphQL endpoint from config: ${graphqlEndpoint}`;
+  } else {
+    $debug.textContent = `GraphQL endpoint not found. Keys tried: ${endpointKeysTried.join(', ')}`;
+  }
 
   $status.textContent = 'Loading pickup locations…';
 
@@ -166,7 +166,6 @@ export async function renderClosestPickupLocations(
   try {
     const data = await commerceGraphQL({
       endpoint: graphqlEndpoint,
-      headers: graphqlHeaders,
       query: PICKUP_LOCATIONS_ALL,
       variables: { pageSize },
     });
@@ -176,7 +175,10 @@ export async function renderClosestPickupLocations(
       .map(normalizePickupLocation)
       .filter((s) => s.code && Number.isFinite(s.lat) && Number.isFinite(s.lng));
   } catch (e) {
-    $status.textContent = `Couldn’t load pickup locations: ${e.message}`;
+    // Preserve your original message style but more direct
+    $status.textContent = graphqlEndpoint
+      ? `Couldn’t load pickup locations: ${e.message}`
+      : `Couldn’t load pickup locations: Missing graphqlEndpoint. Set config "endpoints.commerce-core-endpoint" OR "commerce-core-endpoint" OR "commerce-graphql-endpoint".`;
     return;
   }
 

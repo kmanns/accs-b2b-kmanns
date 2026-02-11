@@ -83,10 +83,6 @@ function redirectToCartIfEmpty(cartData) {
   }
 }
 
-/**
- * Resolve a config value by trying several possible keys.
- * This keeps us compatible with different storefront config shapes.
- */
 function getFirstConfigValue(keys) {
   for (const key of keys) {
     const v = getConfigValue(key);
@@ -208,25 +204,13 @@ export default async function decorate(block) {
   // First, render the place order component
   await renderPlaceOrder($placeOrder, { handleValidation, handlePlaceOrder, b2bIsPoEnabled });
 
-  /**
-   * ✅ IMPORTANT:
-   * You said you updated config, but the code can't find it.
-   * Most commonly: the config key name doesn't match what we're reading.
-   *
-   * So we try a few common keys:
-   * - endpoints.commerce-core-endpoint (docs-style nested key)
-   * - commerce-core-endpoint (flat key)
-   * - commerce-graphql-endpoint (what many projects use)
-   */
-  const graphqlEndpoint = getFirstConfigValue([
+  // ✅ Resolve endpoint from config using multiple keys
+  const endpointKeysTried = [
     'endpoints.commerce-core-endpoint',
     'commerce-core-endpoint',
     'commerce-graphql-endpoint',
-  ]);
-
-  // Helpful debug output (shows up in browser console)
-  // eslint-disable-next-line no-console
-  console.log('[BOPIS] graphqlEndpoint resolved to:', graphqlEndpoint);
+  ];
+  const graphqlEndpoint = getFirstConfigValue(endpointKeysTried);
 
   // Render the remaining containers
   await Promise.all([
@@ -238,9 +222,10 @@ export default async function decorate(block) {
     renderShippingAddressFormSkeleton($shippingForm),
     renderBillToShippingAddress($billToShipping),
 
-    // Option 3: closest pickup locations
+    // Option 3: closest pickup locations (UI will display endpoint/debug info)
     renderClosestPickupLocations($inStorePickup, {
       graphqlEndpoint,
+      endpointKeysTried,
       eventsBus: events,
       pageSize: 200,
       maxResults: 5,
