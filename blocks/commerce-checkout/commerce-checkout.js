@@ -20,7 +20,7 @@ import {
 import { PaymentMethodCode } from '@dropins/storefront-payment-services/api.js';
 
 // Block Utilities
-import { getConfigValue } from '@dropins/tools/lib/aem/configs.js';
+import { getConfigValue, getHeaders } from '@dropins/tools/lib/aem/configs.js';
 import { buildOrderDetailsUrl, displayOverlaySpinner, removeOverlaySpinner } from './utils.js';
 
 // Fragment functions
@@ -61,7 +61,6 @@ import {
   SHIPPING_FORM_NAME,
   TERMS_AND_CONDITIONS_FORM_NAME,
 } from './constants.js';
-
 import { rootLink, CUSTOMER_PO_DETAILS_PATH, ORDER_DETAILS_PATH } from '../../scripts/commerce.js';
 
 // Initializers
@@ -81,14 +80,6 @@ function redirectToCartIfEmpty(cartData) {
   if (!isOrderPlaced && (cartData === null || cartData?.items?.length === 0)) {
     window.location.href = rootLink('/cart');
   }
-}
-
-function getFirstConfigValue(keys) {
-  for (const key of keys) {
-    const v = getConfigValue(key);
-    if (typeof v === 'string' && v.trim().length) return v.trim();
-  }
-  return undefined;
 }
 
 export default async function decorate(block) {
@@ -137,11 +128,8 @@ export default async function decorate(block) {
 
   // Create the checkout layout using fragments
   const checkoutFragment = createCheckoutFragment();
-
-  // Create scoped selector for the checkout fragment
   const getElement = createScopedSelector(checkoutFragment);
 
-  // Get all checkout elements using centralized selectors
   const $content = getElement(selectors.checkout.content);
   const $loader = getElement(selectors.checkout.loader);
   const $mergedCartBanner = getElement(selectors.checkout.mergedCartBanner);
@@ -152,7 +140,7 @@ export default async function decorate(block) {
   const $shippingForm = getElement(selectors.checkout.shippingForm);
   const $billToShipping = getElement(selectors.checkout.billToShipping);
 
-  // Option 3 container
+  // Option 3 container (must exist in fragments.js)
   const $inStorePickup = getElement(selectors.checkout.inStorePickup);
 
   const $delivery = getElement(selectors.checkout.delivery);
@@ -201,19 +189,34 @@ export default async function decorate(block) {
     }
   };
 
-  // First, render the place order component
   await renderPlaceOrder($placeOrder, { handleValidation, handlePlaceOrder, b2bIsPoEnabled });
 
-  // ✅ Resolve endpoint from config using multiple keys
-  const endpointKeysTried = [
-    'endpoints.commerce-core-endpoint',
-    'commerce-core-endpoint',
-    'commerce-graphql-endpoint',
-  ];
-  const graphqlEndpoint = getFirstConfigValue(endpointKeysTried);
+  // ✅ THIS is your endpoint key from config.json
+  const graphqlEndpoint = getConfigValue('commerce-endpoint');
 
-  // Render the remaining containers
-  await Promise.all([
+  // ✅ Pass Store header etc. from config.json -> headers.all
+  // This relies on your config.json: headers.all.Store = "default"
+  const graphqlHeaders = {
+    ...(getHeaders?.('all') || {}),
+  };
+
+  const [
+    _mergedCartBanner,
+    _header,
+    _serverError,
+    _outOfStock,
+    _loginForm,
+    shippingFormSkeleton,
+    _billToShipping,
+    _closestPickup,
+    _shippingMethods,
+    _paymentMethods,
+    billingFormSkeleton,
+    _orderSummary,
+    _cartSummary,
+    _termsAndConditions,
+    _giftOptions,
+  ] = await Promise.all([
     renderMergedCartBanner($mergedCartBanner),
     renderCheckoutHeader($heading, 'Checkout'),
     renderServerError($serverError, $content),
@@ -222,10 +225,10 @@ export default async function decorate(block) {
     renderShippingAddressFormSkeleton($shippingForm),
     renderBillToShippingAddress($billToShipping),
 
-    // Option 3: closest pickup locations (UI will display endpoint/debug info)
+    // ✅ Pickup selector reads the endpoint from config, no manual entry needed
     renderClosestPickupLocations($inStorePickup, {
       graphqlEndpoint,
-      endpointKeysTried,
+      graphqlHeaders,
       eventsBus: events,
       pageSize: 200,
       maxResults: 5,
@@ -257,10 +260,12 @@ export default async function decorate(block) {
       shippingForm = null;
       $shippingForm.innerHTML = '';
     } else if (!shippingForm) {
+      shippingFormSkeleton.remove();
       shippingForm = await renderAddressForm($shippingForm, shippingFormRef, data, 'shipping');
     }
 
     if (!billingForm) {
+      billingFormSkeleton.remove();
       billingForm = await renderAddressForm($billingForm, billingFormRef, data, 'billing');
     }
   }
