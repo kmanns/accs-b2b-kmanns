@@ -200,8 +200,8 @@ export default async function decorate(block) {
   // First, render the place order component
   await renderPlaceOrder($placeOrder, { handleValidation, handlePlaceOrder, b2bIsPoEnabled });
 
-  // IMPORTANT: Require a real endpoint (do not fall back to /graphql)
-  const graphqlEndpoint = getConfigValue('https://na1-sandbox.api.commerce.adobe.com/NGqWb1jCB8UhohMLshMAHd/graphql');
+  // ✅ FIX: set the endpoint directly (do not call getConfigValue with a URL)
+  const graphqlEndpoint = 'https://na1-sandbox.api.commerce.adobe.com/NGqWb1jCB8UhohMLshMAHd/graphql';
 
   // Render the remaining containers
   const [
