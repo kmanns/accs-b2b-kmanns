@@ -18,6 +18,10 @@ export const selectors = Object.freeze({
     login: '.checkout__login',
     shippingForm: '.checkout__shipping-form',
     billToShipping: '.checkout__bill-to-shipping',
+
+    // NEW: Option 3 (closest pickup store selector container)
+    inStorePickup: '.checkout__in-store-pickup',
+
     delivery: '.checkout__delivery',
     paymentMethods: '.checkout__payment-methods',
     billingForm: '.checkout__billing-form',
@@ -52,6 +56,10 @@ export function createCheckoutFragment() {
           <div class="checkout__login ${CHECKOUT_BLOCK}"></div>
           <div class="checkout__shipping-form ${CHECKOUT_BLOCK}"></div>
           <div class="checkout__bill-to-shipping ${CHECKOUT_BLOCK}"></div>
+
+          <!-- NEW: Option 3 UI renders into this container -->
+          <div class="checkout__in-store-pickup ${CHECKOUT_BLOCK}"></div>
+
           <div class="checkout__delivery ${CHECKOUT_BLOCK}"></div>
           <div class="checkout__payment-methods ${CHECKOUT_BLOCK}"></div>
           <div class="checkout__billing-form ${CHECKOUT_BLOCK}"></div>

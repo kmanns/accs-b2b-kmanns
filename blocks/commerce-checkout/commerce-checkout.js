@@ -26,6 +26,9 @@ import { buildOrderDetailsUrl, displayOverlaySpinner, removeOverlaySpinner } fro
 // Fragment functions
 import { createCheckoutFragment, selectors } from './fragments.js';
 
+// NEW: closest pickup selector (Option 3)
+import { renderClosestPickupLocations } from './pickup-locations.js';
+
 // Container functions
 import {
   renderAddressForm,
@@ -139,6 +142,10 @@ export default async function decorate(block) {
   const $login = getElement(selectors.checkout.login);
   const $shippingForm = getElement(selectors.checkout.shippingForm);
   const $billToShipping = getElement(selectors.checkout.billToShipping);
+
+  // NEW: closest pickup selector container
+  const $inStorePickup = getElement(selectors.checkout.inStorePickup);
+
   const $delivery = getElement(selectors.checkout.delivery);
   const $paymentMethods = getElement(selectors.checkout.paymentMethods);
   const $billingForm = getElement(selectors.checkout.billingForm);
@@ -193,6 +200,9 @@ export default async function decorate(block) {
   // First, render the place order component
   await renderPlaceOrder($placeOrder, { handleValidation, handlePlaceOrder, b2bIsPoEnabled });
 
+  // Resolve GraphQL endpoint for pickup locations
+  const graphqlEndpoint = getConfigValue('commerce-graphql-endpoint') || '/graphql';
+
   // Render the remaining containers
   const [
     _mergedCartBanner,
@@ -202,6 +212,7 @@ export default async function decorate(block) {
     _loginForm,
     shippingFormSkeleton,
     _billToShipping,
+    _closestPickup, // NEW
     _shippingMethods,
     _paymentMethods,
     billingFormSkeleton,
@@ -223,6 +234,16 @@ export default async function decorate(block) {
     renderShippingAddressFormSkeleton($shippingForm),
 
     renderBillToShippingAddress($billToShipping),
+
+    // NEW: Option 3 - closest pickup locations UI
+    renderClosestPickupLocations($inStorePickup, {
+      graphqlEndpoint,
+      eventsBus: events,
+      pageSize: 200,
+      maxResults: 5,
+      storageKey: 'bopis:selectedPickupLocation',
+      eventName: 'bopis/pickup-location-selected',
+    }),
 
     renderShippingMethods($delivery),
 
