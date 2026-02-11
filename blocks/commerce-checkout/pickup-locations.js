@@ -176,6 +176,7 @@ export async function renderClosestPickupLocations(
     graphqlEndpoint,
     graphqlHeaders = {},
     eventsBus,
+    onSelectStore,
     pageSize = 200,
     maxResults = 5,
     storageKey = 'bopis:selectedPickupLocation',
@@ -210,6 +211,15 @@ export async function renderClosestPickupLocations(
 
   let stores = [];
   let totalItems = 0;
+  let selectedCode = '';
+  try {
+    const saved = sessionStorage.getItem(storageKey);
+    if (saved) {
+      selectedCode = JSON.parse(saved)?.code || '';
+    }
+  } catch (e) {
+    selectedCode = '';
+  }
   const buildHeaderCandidates = () => {
     const storeHeader = graphqlHeaders?.Store;
     const candidates = [
@@ -277,24 +287,55 @@ export async function renderClosestPickupLocations(
             ${distText ? `<div class="pickup-store-card__dist">${distText}</div>` : ''}
           </div>
           <div class="pickup-store-card__actions">
-            <button type="button" class="pickup-store-card__select" data-code="${s.code}">
-              Select this store
+            <button
+              type="button"
+              class="pickup-store-card__select"
+              data-code="${s.code}"
+              ${selectedCode === s.code ? 'aria-pressed="true"' : 'aria-pressed="false"'}
+            >
+              ${selectedCode === s.code ? 'Selected' : 'Select this store'}
             </button>
           </div>
         </div>
       `;
     }).join('');
 
+    $results.querySelectorAll('.pickup-store-card').forEach((card) => {
+      const code = card.querySelector('.pickup-store-card__select')?.getAttribute('data-code');
+      card.classList.toggle('is-selected', code === selectedCode);
+    });
+
+    const setBusy = (busy) => {
+      $geoBtn.disabled = busy;
+      $results.querySelectorAll('.pickup-store-card__select').forEach((node) => {
+        node.disabled = busy;
+      });
+    };
+
     $results.querySelectorAll('.pickup-store-card__select').forEach((btn) => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const code = btn.getAttribute('data-code');
         const store = stores.find((x) => x.code === code);
         if (!store) return;
 
-        sessionStorage.setItem(storageKey, JSON.stringify(store));
-        if (eventsBus) eventsBus.emit(eventName, store);
+        setBusy(true);
+        $status.textContent = `Applying pickup location: ${store.name}...`;
 
-        $status.textContent = `Selected: ${store.name}`;
+        try {
+          if (typeof onSelectStore === 'function') {
+            await onSelectStore(store);
+          }
+
+          selectedCode = store.code;
+          sessionStorage.setItem(storageKey, JSON.stringify(store));
+          if (eventsBus) eventsBus.emit(eventName, store);
+          renderCards(sortedStores, origin);
+          $status.textContent = `Selected: ${store.name}`;
+        } catch (e) {
+          $status.textContent = `Could not apply pickup for ${store.name}: ${String(e.message || e)}`;
+        } finally {
+          setBusy(false);
+        }
       });
     });
   }

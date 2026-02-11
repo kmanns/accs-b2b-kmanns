@@ -9,6 +9,7 @@ import { initReCaptcha } from '@dropins/tools/recaptcha.js';
 import * as orderApi from '@dropins/storefront-order/api.js';
 
 // Checkout Dropin Libraries
+import * as checkoutApi from '@dropins/storefront-checkout/api.js';
 import {
   createScopedSelector,
   isVirtualCart,
@@ -200,6 +201,73 @@ export default async function decorate(block) {
     ...(getHeaders?.('cs') || {}),
   };
 
+  const findPickupMethod = (checkoutData) => {
+    const shippingAddress = checkoutData?.shippingAddresses?.[0];
+    const available = shippingAddress?.availableShippingMethods || [];
+    const selected = shippingAddress?.selectedShippingMethod;
+
+    const isPickup = (method) => {
+      if (!method) return false;
+      const haystack = [
+        method.code,
+        method.title,
+        method.value,
+        method.carrier?.code,
+        method.carrier?.title,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes('pickup') || haystack.includes('store');
+    };
+
+    if (isPickup(selected)) return selected;
+    const explicitPickup = available.find(isPickup);
+    if (explicitPickup) return explicitPickup;
+
+    const zeroCostMethod = available.find((method) => Number(method?.amount?.value) === 0);
+    if (zeroCostMethod) return zeroCostMethod;
+
+    const nonFlatRateMethod = available.find((method) => {
+      const carrierCode = method?.carrier?.code?.toLowerCase() || '';
+      const methodCode = method?.code?.toLowerCase() || '';
+      return !carrierCode.includes('flatrate') && !methodCode.includes('flatrate');
+    });
+    if (nonFlatRateMethod) return nonFlatRateMethod;
+
+    if (available.length === 1) return available[0];
+    return null;
+  };
+
+  const applyPickupStoreSelection = async (store) => {
+    if (!store?.code) {
+      throw new Error('Missing pickup location code.');
+    }
+
+    await checkoutApi.setShippingAddress({ pickupLocationCode: store.code });
+
+    let checkoutData = events.lastPayload('checkout/updated')
+      || events.lastPayload('checkout/initialized');
+    let pickupMethod = findPickupMethod(checkoutData);
+
+    if (!pickupMethod && typeof checkoutApi.synchronizeCheckout === 'function') {
+      checkoutData = await checkoutApi.synchronizeCheckout();
+      pickupMethod = findPickupMethod(checkoutData);
+    }
+
+    if (!pickupMethod) {
+      throw new Error('Pickup shipping method not available for the selected location.');
+    }
+    if (!pickupMethod.carrier?.code || !pickupMethod.code) {
+      throw new Error('Pickup shipping method is missing carrier/method code.');
+    }
+
+    await checkoutApi.setShippingMethods([{
+      carrierCode: pickupMethod.carrier.code,
+      methodCode: pickupMethod.code,
+    }]);
+  };
+
   const [
     _mergedCartBanner,
     _header,
@@ -230,6 +298,7 @@ export default async function decorate(block) {
       graphqlEndpoint,
       graphqlHeaders,
       eventsBus: events,
+      onSelectStore: applyPickupStoreSelection,
       pageSize: 200,
       maxResults: 5,
       storageKey: 'bopis:selectedPickupLocation',

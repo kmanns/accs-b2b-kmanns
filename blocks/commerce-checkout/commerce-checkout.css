@@ -218,6 +218,87 @@
     display: none;
 }
 
+/* Pickup locations */
+.checkout__in-store-pickup .pickup-selector {
+    display: grid;
+    gap: var(--spacing-small);
+    padding: var(--spacing-medium);
+    border: 1px solid var(--color-neutral-300);
+    border-radius: 12px;
+    background: var(--color-neutral-100);
+}
+
+.checkout__in-store-pickup .pickup-selector__actions {
+    margin-top: var(--spacing-xsmall);
+}
+
+.checkout__in-store-pickup .pickup-selector__geo-btn {
+    border: 1px solid var(--color-neutral-400);
+    border-radius: 999px;
+    padding: 8px 14px;
+    background: var(--color-neutral-50);
+    cursor: pointer;
+    font: var(--type-body-2-strong-font);
+}
+
+.checkout__in-store-pickup .pickup-selector__geo-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.checkout__in-store-pickup .pickup-selector__status {
+    font: var(--type-body-2-default-font);
+    color: var(--color-neutral-700);
+}
+
+.checkout__in-store-pickup .pickup-selector__results {
+    display: grid;
+    gap: var(--spacing-small);
+}
+
+.checkout__in-store-pickup .pickup-store-card {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: var(--spacing-small);
+    align-items: center;
+    padding: var(--spacing-small);
+    border: 1px solid var(--color-neutral-300);
+    border-radius: 10px;
+    background: var(--color-neutral-50);
+}
+
+.checkout__in-store-pickup .pickup-store-card.is-selected {
+    border-color: var(--color-brand-500);
+    box-shadow: 0 0 0 1px var(--color-brand-500);
+    background: var(--color-brand-100);
+}
+
+.checkout__in-store-pickup .pickup-store-card__name {
+    margin-bottom: 4px;
+}
+
+.checkout__in-store-pickup .pickup-store-card__addr,
+.checkout__in-store-pickup .pickup-store-card__phone,
+.checkout__in-store-pickup .pickup-store-card__dist {
+    font: var(--type-body-2-default-font);
+    color: var(--color-neutral-700);
+}
+
+.checkout__in-store-pickup .pickup-store-card__select {
+    border: 1px solid var(--color-neutral-400);
+    border-radius: 999px;
+    padding: 8px 14px;
+    white-space: nowrap;
+    background: var(--color-neutral-0);
+    cursor: pointer;
+    font: var(--type-body-2-strong-font);
+}
+
+.checkout__in-store-pickup .pickup-store-card__select:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
 @media only screen and (min-width: 320px) and (max-width: 768px) {
     .checkout__main,
     .checkout__aside {
@@ -238,6 +319,10 @@
 
     .checkout__place-order {
         order: 4;
+    }
+
+    .checkout__in-store-pickup .pickup-store-card {
+        grid-template-columns: 1fr;
     }
 }
 
