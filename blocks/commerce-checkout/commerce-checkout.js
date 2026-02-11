@@ -20,7 +20,7 @@ import {
 import { PaymentMethodCode } from '@dropins/storefront-payment-services/api.js';
 
 // Block Utilities
-import { getConfigValue, getHeaders } from '@dropins/tools/lib/aem/configs.js';
+import { getConfigValue } from '@dropins/tools/lib/aem/configs.js';
 import { buildOrderDetailsUrl, displayOverlaySpinner, removeOverlaySpinner } from './utils.js';
 
 // Fragment functions
@@ -81,6 +81,18 @@ function redirectToCartIfEmpty(cartData) {
   if (!isOrderPlaced && (cartData === null || cartData?.items?.length === 0)) {
     window.location.href = rootLink('/cart');
   }
+}
+
+/**
+ * Resolve a config value by trying several possible keys.
+ * This keeps us compatible with different storefront config shapes.
+ */
+function getFirstConfigValue(keys) {
+  for (const key of keys) {
+    const v = getConfigValue(key);
+    if (typeof v === 'string' && v.trim().length) return v.trim();
+  }
+  return undefined;
 }
 
 export default async function decorate(block) {
@@ -169,15 +181,12 @@ export default async function decorate(block) {
   const handlePlaceOrder = async ({ cartId, code }) => {
     await displayOverlaySpinner(loaderRef, $loader);
     try {
-      // Payment Services credit card
       if (code === PaymentMethodCode.CREDIT_CARD) {
         if (!creditCardFormRef.current) {
           console.error('Credit card form not rendered.');
           return;
         }
-        if (!creditCardFormRef.current.validate()) {
-          return;
-        }
+        if (!creditCardFormRef.current.validate()) return;
         await creditCardFormRef.current.submit();
       }
 
@@ -200,37 +209,27 @@ export default async function decorate(block) {
   await renderPlaceOrder($placeOrder, { handleValidation, handlePlaceOrder, b2bIsPoEnabled });
 
   /**
-   * IMPORTANT:
-   * Use the Storefront config endpoint keys, NOT a hard-coded SaaS gateway URL.
-   * - endpoints.commerce-core-endpoint is the core GraphQL endpoint (read/write)
-   * - headers.all typically contains "Store" (store view code) and other required headers
+   * ✅ IMPORTANT:
+   * You said you updated config, but the code can't find it.
+   * Most commonly: the config key name doesn't match what we're reading.
+   *
+   * So we try a few common keys:
+   * - endpoints.commerce-core-endpoint (docs-style nested key)
+   * - commerce-core-endpoint (flat key)
+   * - commerce-graphql-endpoint (what many projects use)
    */
-  const graphqlEndpoint =
-    getConfigValue('endpoints.commerce-core-endpoint')
-    || getConfigValue('commerce-core-endpoint'); // fallback if your config is flat
+  const graphqlEndpoint = getFirstConfigValue([
+    'endpoints.commerce-core-endpoint',
+    'commerce-core-endpoint',
+    'commerce-graphql-endpoint',
+  ]);
 
-  const graphqlHeaders = {
-    ...(getHeaders?.('all') || {}), // Store header lives here per Storefront config docs
-  };
+  // Helpful debug output (shows up in browser console)
+  // eslint-disable-next-line no-console
+  console.log('[BOPIS] graphqlEndpoint resolved to:', graphqlEndpoint);
 
   // Render the remaining containers
-  const [
-    _mergedCartBanner,
-    _header,
-    _serverError,
-    _outOfStock,
-    _loginForm,
-    shippingFormSkeleton,
-    _billToShipping,
-    _closestPickup,
-    _shippingMethods,
-    _paymentMethods,
-    billingFormSkeleton,
-    _orderSummary,
-    _cartSummary,
-    _termsAndConditions,
-    _giftOptions,
-  ] = await Promise.all([
+  await Promise.all([
     renderMergedCartBanner($mergedCartBanner),
     renderCheckoutHeader($heading, 'Checkout'),
     renderServerError($serverError, $content),
@@ -242,7 +241,6 @@ export default async function decorate(block) {
     // Option 3: closest pickup locations
     renderClosestPickupLocations($inStorePickup, {
       graphqlEndpoint,
-      graphqlHeaders,
       eventsBus: events,
       pageSize: 200,
       maxResults: 5,
@@ -274,12 +272,10 @@ export default async function decorate(block) {
       shippingForm = null;
       $shippingForm.innerHTML = '';
     } else if (!shippingForm) {
-      shippingFormSkeleton.remove();
       shippingForm = await renderAddressForm($shippingForm, shippingFormRef, data, 'shipping');
     }
 
     if (!billingForm) {
-      billingFormSkeleton.remove();
       billingForm = await renderAddressForm($billingForm, billingFormRef, data, 'billing');
     }
   }
