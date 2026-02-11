@@ -20,13 +20,13 @@ import {
 import { PaymentMethodCode } from '@dropins/storefront-payment-services/api.js';
 
 // Block Utilities
-import { getConfigValue } from '@dropins/tools/lib/aem/configs.js';
+import { getConfigValue, getHeaders } from '@dropins/tools/lib/aem/configs.js';
 import { buildOrderDetailsUrl, displayOverlaySpinner, removeOverlaySpinner } from './utils.js';
 
 // Fragment functions
 import { createCheckoutFragment, selectors } from './fragments.js';
 
-// NEW: closest pickup selector (Option 3)
+// Closest pickup selector (Option 3)
 import { renderClosestPickupLocations } from './pickup-locations.js';
 
 // Container functions
@@ -61,6 +61,7 @@ import {
   SHIPPING_FORM_NAME,
   TERMS_AND_CONDITIONS_FORM_NAME,
 } from './constants.js';
+
 import { rootLink, CUSTOMER_PO_DETAILS_PATH, ORDER_DETAILS_PATH } from '../../scripts/commerce.js';
 
 // Initializers
@@ -143,7 +144,7 @@ export default async function decorate(block) {
   const $shippingForm = getElement(selectors.checkout.shippingForm);
   const $billToShipping = getElement(selectors.checkout.billToShipping);
 
-  // NEW: closest pickup selector container
+  // Option 3 container
   const $inStorePickup = getElement(selectors.checkout.inStorePickup);
 
   const $delivery = getElement(selectors.checkout.delivery);
@@ -175,10 +176,8 @@ export default async function decorate(block) {
           return;
         }
         if (!creditCardFormRef.current.validate()) {
-          // Credit card form invalid; abort order placement
           return;
         }
-        // Submit Payment Services credit card form
         await creditCardFormRef.current.submit();
       }
 
@@ -200,8 +199,19 @@ export default async function decorate(block) {
   // First, render the place order component
   await renderPlaceOrder($placeOrder, { handleValidation, handlePlaceOrder, b2bIsPoEnabled });
 
-  // ✅ FIX: set the endpoint directly (do not call getConfigValue with a URL)
-  const graphqlEndpoint = 'https://na1-sandbox.api.commerce.adobe.com/NGqWb1jCB8UhohMLshMAHd/graphql';
+  /**
+   * IMPORTANT:
+   * Use the Storefront config endpoint keys, NOT a hard-coded SaaS gateway URL.
+   * - endpoints.commerce-core-endpoint is the core GraphQL endpoint (read/write)
+   * - headers.all typically contains "Store" (store view code) and other required headers
+   */
+  const graphqlEndpoint =
+    getConfigValue('endpoints.commerce-core-endpoint')
+    || getConfigValue('commerce-core-endpoint'); // fallback if your config is flat
+
+  const graphqlHeaders = {
+    ...(getHeaders?.('all') || {}), // Store header lives here per Storefront config docs
+  };
 
   // Render the remaining containers
   const [
@@ -212,7 +222,7 @@ export default async function decorate(block) {
     _loginForm,
     shippingFormSkeleton,
     _billToShipping,
-    _closestPickup, // NEW
+    _closestPickup,
     _shippingMethods,
     _paymentMethods,
     billingFormSkeleton,
@@ -222,22 +232,17 @@ export default async function decorate(block) {
     _giftOptions,
   ] = await Promise.all([
     renderMergedCartBanner($mergedCartBanner),
-
     renderCheckoutHeader($heading, 'Checkout'),
-
     renderServerError($serverError, $content),
-
     renderOutOfStock($outOfStock),
-
     renderLoginForm($login),
-
     renderShippingAddressFormSkeleton($shippingForm),
-
     renderBillToShippingAddress($billToShipping),
 
-    // NEW: Option 3 - closest pickup locations UI
+    // Option 3: closest pickup locations
     renderClosestPickupLocations($inStorePickup, {
       graphqlEndpoint,
+      graphqlHeaders,
       eventsBus: events,
       pageSize: 200,
       maxResults: 5,
@@ -246,17 +251,11 @@ export default async function decorate(block) {
     }),
 
     renderShippingMethods($delivery),
-
     renderPaymentMethods($paymentMethods, creditCardFormRef),
-
     renderBillingAddressFormSkeleton($billingForm),
-
     renderOrderSummary($orderSummary),
-
     renderCartSummaryList($cartSummary),
-
     renderTermsAndConditions($termsAndConditions),
-
     renderGiftOptions($giftOptions),
   ]);
 
@@ -276,13 +275,11 @@ export default async function decorate(block) {
       $shippingForm.innerHTML = '';
     } else if (!shippingForm) {
       shippingFormSkeleton.remove();
-
       shippingForm = await renderAddressForm($shippingForm, shippingFormRef, data, 'shipping');
     }
 
     if (!billingForm) {
       billingFormSkeleton.remove();
-
       billingForm = await renderAddressForm($billingForm, billingFormRef, data, 'billing');
     }
   }
@@ -297,11 +294,7 @@ export default async function decorate(block) {
       shippingForm = null;
       shippingFormRef.current = null;
 
-      shippingAddresses = await renderCustomerShippingAddresses(
-        $shippingForm,
-        shippingFormRef,
-        data,
-      );
+      shippingAddresses = await renderCustomerShippingAddresses($shippingForm, shippingFormRef, data);
     }
 
     if (!billingAddresses) {
@@ -309,11 +302,7 @@ export default async function decorate(block) {
       billingForm = null;
       billingFormRef.current = null;
 
-      billingAddresses = await renderCustomerBillingAddresses(
-        $billingForm,
-        billingFormRef,
-        data,
-      );
+      billingAddresses = await renderCustomerBillingAddresses($billingForm, billingFormRef, data);
     }
   }
 

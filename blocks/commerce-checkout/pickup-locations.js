@@ -55,27 +55,40 @@ function stripXssiPrefix(text) {
   if (!text) return text;
   const trimmed = text.trimStart();
   if (trimmed.startsWith(")]}'")) return trimmed.slice(4).trimStart();
-  if (trimmed.startsWith("while(1);")) return trimmed.slice("while(1);".length).trimStart();
+  if (trimmed.startsWith('while(1);')) return trimmed.slice('while(1);'.length).trimStart();
   return text;
 }
 
-async function commerceGraphQL({ endpoint, query, variables }) {
+async function commerceGraphQL({ endpoint, headers = {}, query, variables }) {
   if (!endpoint) {
-    throw new Error('Missing graphqlEndpoint. Set config "commerce-graphql-endpoint" to your Commerce GraphQL URL.');
+    throw new Error(
+      'Missing graphqlEndpoint. Set config "endpoints.commerce-core-endpoint" (or "commerce-core-endpoint") to your Commerce GraphQL endpoint.',
+    );
   }
 
-  const res = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify({ query, variables }),
-    credentials: 'include',
-  });
+  let res;
+  let rawText = '';
+  try {
+    res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        ...headers,
+      },
+      body: JSON.stringify({ query, variables }),
+      credentials: 'include',
+    });
 
-  const contentType = res.headers.get('content-type') || '';
-  const rawText = await res.text();
+    rawText = await res.text();
+  } catch (e) {
+    // Browser throws TypeError("Failed to fetch") for CORS, DNS, blocked mixed content, etc.
+    throw new Error(
+      `Network error calling GraphQL endpoint. This is usually CORS/proxy related. `
+      + `Use the CDN/proxied Storefront endpoint from config (endpoints.commerce-core-endpoint) instead of the SaaS gateway URL. `
+      + `Original error: ${e?.message || e}`,
+    );
+  }
 
   if (!res.ok) {
     throw new Error(`GraphQL HTTP ${res.status}. Response starts: ${rawText.slice(0, 160)}`);
@@ -87,9 +100,7 @@ async function commerceGraphQL({ endpoint, query, variables }) {
   try {
     json = JSON.parse(text);
   } catch (e) {
-    throw new Error(
-      `Invalid JSON (content-type: "${contentType}"). Response starts: ${text.trimStart().slice(0, 160)}`,
-    );
+    throw new Error(`Invalid JSON. Response starts: ${text.trimStart().slice(0, 160)}`);
   }
 
   if (json.errors?.length) {
@@ -123,6 +134,7 @@ export async function renderClosestPickupLocations(
   $container,
   {
     graphqlEndpoint,
+    graphqlHeaders = {},
     eventsBus,
     pageSize = 200,
     maxResults = 5,
@@ -154,6 +166,7 @@ export async function renderClosestPickupLocations(
   try {
     const data = await commerceGraphQL({
       endpoint: graphqlEndpoint,
+      headers: graphqlHeaders,
       query: PICKUP_LOCATIONS_ALL,
       variables: { pageSize },
     });
