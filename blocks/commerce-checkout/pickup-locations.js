@@ -19,14 +19,12 @@ function haversineDistanceMiles(a, b) {
 }
 
 function normalizePickupLocation(item) {
-  // These are the commonly documented fields; normalize defensively to avoid breakage
   const code = item.pickup_location_code || item.code || item.source_code || item.sourceCode;
   const name = item.name || item.store_name || item.storeName || code || 'Pickup location';
 
   const lat = Number(item.latitude ?? item.lat);
   const lng = Number(item.longitude ?? item.lng);
 
-  // "street" may be array or string depending on schema/config
   const street = Array.isArray(item.street)
     ? item.street.filter(Boolean).join(', ')
     : (item.street ?? '');
@@ -53,12 +51,19 @@ function formatAddressHtml(store) {
   return [line1, line2, line3].filter(Boolean).join('<br/>');
 }
 
-/**
- * GraphQL helper with robust error messages.
- * - Detects and reports non-JSON (often HTML from a wrong endpoint/rewrite)
- * - Provides a snippet of the response to aid debugging
- */
+function stripXssiPrefix(text) {
+  if (!text) return text;
+  const trimmed = text.trimStart();
+  if (trimmed.startsWith(")]}'")) return trimmed.slice(4).trimStart();
+  if (trimmed.startsWith("while(1);")) return trimmed.slice("while(1);".length).trimStart();
+  return text;
+}
+
 async function commerceGraphQL({ endpoint, query, variables }) {
+  if (!endpoint) {
+    throw new Error('Missing graphqlEndpoint. Set config "commerce-graphql-endpoint" to your Commerce GraphQL URL.');
+  }
+
   const res = await fetch(endpoint, {
     method: 'POST',
     headers: {
@@ -70,27 +75,25 @@ async function commerceGraphQL({ endpoint, query, variables }) {
   });
 
   const contentType = res.headers.get('content-type') || '';
-  const text = await res.text();
+  const rawText = await res.text();
 
   if (!res.ok) {
-    throw new Error(`GraphQL HTTP ${res.status}: ${text.slice(0, 200)}`);
+    throw new Error(`GraphQL HTTP ${res.status}. Response starts: ${rawText.slice(0, 160)}`);
   }
 
-  if (!contentType.includes('application/json')) {
-    throw new Error(
-      `Expected JSON but got "${contentType}". Response starts: ${text.slice(0, 120)}`,
-    );
-  }
+  const text = stripXssiPrefix(rawText);
 
   let json;
   try {
     json = JSON.parse(text);
   } catch (e) {
-    throw new Error(`Invalid JSON. Response starts: ${text.slice(0, 120)}`);
+    throw new Error(
+      `Invalid JSON (content-type: "${contentType}"). Response starts: ${text.trimStart().slice(0, 160)}`,
+    );
   }
 
   if (json.errors?.length) {
-    throw new Error(json.errors.map((e) => e.message).join('; '));
+    throw new Error(json.errors.map((err) => err.message).join('; '));
   }
 
   return json.data;
@@ -116,19 +119,10 @@ const PICKUP_LOCATIONS_ALL = `
   }
 `;
 
-/**
- * Option 3: Show “closest pickup location” cards based on shopper geolocation.
- *
- * This does NOT set the shipping method — it:
- * - emits an event with the chosen location
- * - stores it in sessionStorage
- *
- * You can wire the actual “set pickup location in checkout state” later.
- */
 export async function renderClosestPickupLocations(
   $container,
   {
-    graphqlEndpoint = '/graphql',
+    graphqlEndpoint,
     eventsBus,
     pageSize = 200,
     maxResults = 5,
@@ -169,13 +163,12 @@ export async function renderClosestPickupLocations(
       .map(normalizePickupLocation)
       .filter((s) => s.code && Number.isFinite(s.lat) && Number.isFinite(s.lng));
   } catch (e) {
-    // This is where you'll now get a MUCH clearer message if /graphql returns HTML
     $status.textContent = `Couldn’t load pickup locations: ${e.message}`;
     return;
   }
 
   if (!stores.length) {
-    $status.textContent = 'No pickup locations available.';
+    $status.textContent = 'No pickup locations available (or missing lat/lng).';
     return;
   }
 
@@ -217,7 +210,6 @@ export async function renderClosestPickupLocations(
     });
   }
 
-  // initial render (no distance)
   $status.textContent = `Showing ${Math.min(maxResults, stores.length)} pickup locations. Use your location to sort by closest.`;
   renderCards(stores, null);
 

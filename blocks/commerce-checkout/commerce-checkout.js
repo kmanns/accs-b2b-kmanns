@@ -200,8 +200,8 @@ export default async function decorate(block) {
   // First, render the place order component
   await renderPlaceOrder($placeOrder, { handleValidation, handlePlaceOrder, b2bIsPoEnabled });
 
-  // Resolve GraphQL endpoint for pickup locations
-  const graphqlEndpoint = getConfigValue('commerce-graphql-endpoint') || '/graphql';
+  // IMPORTANT: Require a real endpoint (do not fall back to /graphql)
+  const graphqlEndpoint = getConfigValue('https://na1-sandbox.api.commerce.adobe.com/NGqWb1jCB8UhohMLshMAHd/graphql');
 
   // Render the remaining containers
   const [
@@ -325,9 +325,6 @@ export default async function decorate(block) {
   function handleAuthenticated(authenticated) {
     if (!authenticated) return;
 
-    // When a customer creates an account on the checkout success page and then
-    // signs in, they will be redirected to the order details page with the order
-    // number as orderRef, allowing the order details to be displayed
     const orderData = events.lastPayload('order/placed');
     if (orderData) {
       const url = buildOrderDetailsUrl(orderData);
@@ -343,24 +340,20 @@ export default async function decorate(block) {
   }
 
   async function handleOrderPlaced(orderData) {
-    // Clear address form data
     sessionStorage.removeItem(SHIPPING_ADDRESS_DATA_KEY);
     sessionStorage.removeItem(BILLING_ADDRESS_DATA_KEY);
 
     const url = buildOrderDetailsUrl(orderData);
-
     window.history.pushState({}, '', url);
 
     await renderCheckoutSuccess(block, { orderData });
   }
 
   async function handlePurchaseOrderPlaced(poData) {
-    // Clear address form data
     sessionStorage.removeItem(SHIPPING_ADDRESS_DATA_KEY);
     sessionStorage.removeItem(BILLING_ADDRESS_DATA_KEY);
 
     const url = rootLink(`${CUSTOMER_PO_DETAILS_PATH}?poRef=${poData?.uid}`);
-
     window.history.pushState({}, '', url);
 
     if (b2bRenderPoSuccess) {
