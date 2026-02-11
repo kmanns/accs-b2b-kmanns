@@ -194,10 +194,10 @@ export default async function decorate(block) {
   // ✅ THIS is your endpoint key from config.json
   const graphqlEndpoint = getConfigValue('commerce-endpoint');
 
-  // ✅ Pass Store header etc. from config.json -> headers.all
-  // This relies on your config.json: headers.all.Store = "default"
+  // Pass storefront and catalog-service headers from config.json.
   const graphqlHeaders = {
     ...(getHeaders?.('all') || {}),
+    ...(getHeaders?.('cs') || {}),
   };
 
   const [

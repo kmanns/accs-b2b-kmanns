@@ -93,7 +93,6 @@ async function commerceGraphQL({ endpoint, headers = {}, query, variables }) {
         ...headers,
       },
       body: JSON.stringify({ query, variables }),
-      credentials: 'include',
     });
 
     rawText = await res.text();

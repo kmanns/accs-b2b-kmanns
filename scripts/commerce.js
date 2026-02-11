@@ -641,7 +641,7 @@ function createHashFromObject(obj, length = 5) {
  * @returns {Promise<URL>} A promise that resolves to the endpoint URL with query parameters
  */
 export async function commerceEndpointWithQueryParams(customHeaders = {}) {
-  const urlWithQueryParams = new URL(getConfigValue('commerce-endpoint'));
+  const urlWithQueryParams = new URL(getConfigValue('commerce-endpoint'), window.location.origin);
   const headers = {
     ...getHeaders('cs'),
     ...customHeaders,
