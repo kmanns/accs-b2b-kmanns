@@ -53,17 +53,45 @@ function formatAddressHtml(store) {
   return [line1, line2, line3].filter(Boolean).join('<br/>');
 }
 
+/**
+ * GraphQL helper with robust error messages.
+ * - Detects and reports non-JSON (often HTML from a wrong endpoint/rewrite)
+ * - Provides a snippet of the response to aid debugging
+ */
 async function commerceGraphQL({ endpoint, query, variables }) {
   const res = await fetch(endpoint, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
     body: JSON.stringify({ query, variables }),
+    credentials: 'include',
   });
 
-  const json = await res.json();
+  const contentType = res.headers.get('content-type') || '';
+  const text = await res.text();
 
-  if (!res.ok) throw new Error(`GraphQL HTTP ${res.status}`);
-  if (json.errors?.length) throw new Error(json.errors.map((e) => e.message).join('; '));
+  if (!res.ok) {
+    throw new Error(`GraphQL HTTP ${res.status}: ${text.slice(0, 200)}`);
+  }
+
+  if (!contentType.includes('application/json')) {
+    throw new Error(
+      `Expected JSON but got "${contentType}". Response starts: ${text.slice(0, 120)}`,
+    );
+  }
+
+  let json;
+  try {
+    json = JSON.parse(text);
+  } catch (e) {
+    throw new Error(`Invalid JSON. Response starts: ${text.slice(0, 120)}`);
+  }
+
+  if (json.errors?.length) {
+    throw new Error(json.errors.map((e) => e.message).join('; '));
+  }
 
   return json.data;
 }
@@ -141,6 +169,7 @@ export async function renderClosestPickupLocations(
       .map(normalizePickupLocation)
       .filter((s) => s.code && Number.isFinite(s.lat) && Number.isFinite(s.lng));
   } catch (e) {
+    // This is where you'll now get a MUCH clearer message if /graphql returns HTML
     $status.textContent = `Couldn’t load pickup locations: ${e.message}`;
     return;
   }
