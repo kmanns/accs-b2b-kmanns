@@ -210,15 +210,39 @@ export async function renderClosestPickupLocations(
 
   let stores = [];
   let totalItems = 0;
-  try {
-    const data = await commerceGraphQL({
-      endpoint: effectiveEndpoint,
-      headers: graphqlHeaders,
-      query: PICKUP_LOCATIONS_ALL,
-      variables: { pageSize },
-    });
+  const buildHeaderCandidates = () => {
+    const storeHeader = graphqlHeaders?.Store;
+    const candidates = [
+      graphqlHeaders,
+      storeHeader ? { Store: storeHeader } : null,
+      {},
+    ].filter(Boolean);
 
-    const items = data?.pickupLocations?.items ?? [];
+    const seen = new Set();
+    return candidates.filter((headers) => {
+      const key = JSON.stringify(headers);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
+
+  try {
+    const headerCandidates = buildHeaderCandidates();
+    let items = [];
+
+    for (const headers of headerCandidates) {
+      const data = await commerceGraphQL({
+        endpoint: effectiveEndpoint,
+        headers,
+        query: PICKUP_LOCATIONS_ALL,
+        variables: { pageSize },
+      });
+
+      items = data?.pickupLocations?.items ?? [];
+      if (items.length) break;
+    }
+
     totalItems = items.length;
     stores = items
       .map(normalizePickupLocation)
@@ -231,7 +255,7 @@ export async function renderClosestPickupLocations(
   if (!stores.length) {
     $status.textContent = totalItems
       ? 'Pickup locations were returned, but none had a usable location code.'
-      : 'No pickup locations available.';
+      : 'No pickup locations available for the current store context. Check stock/source assignment and store headers.';
     return;
   }
 

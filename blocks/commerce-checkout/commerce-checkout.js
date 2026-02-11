@@ -192,7 +192,7 @@ export default async function decorate(block) {
   await renderPlaceOrder($placeOrder, { handleValidation, handlePlaceOrder, b2bIsPoEnabled });
 
   // ✅ THIS is your endpoint key from config.json
-  const graphqlEndpoint = getConfigValue('commerce-endpoint');
+  const graphqlEndpoint = getConfigValue('commerce-core-endpoint') || getConfigValue('commerce-endpoint');
 
   // Pass storefront and catalog-service headers from config.json.
   const graphqlHeaders = {
