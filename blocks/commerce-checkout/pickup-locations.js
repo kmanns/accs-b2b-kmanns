@@ -22,8 +22,25 @@ function normalizePickupLocation(item) {
   const code = item.pickup_location_code || item.code || item.source_code || item.sourceCode;
   const name = item.name || item.store_name || item.storeName || code || 'Pickup location';
 
-  const lat = Number(item.latitude ?? item.lat);
-  const lng = Number(item.longitude ?? item.lng);
+  const parseCoordinate = (value) => {
+    if (typeof value === 'number') return value;
+    if (typeof value !== 'string') return Number.NaN;
+    const normalized = value.trim().replace(',', '.');
+    return Number(normalized);
+  };
+
+  const lat = parseCoordinate(
+    item.latitude
+    ?? item.lat
+    ?? item.geo_coordinates?.latitude
+    ?? item.geoCoordinates?.latitude,
+  );
+  const lng = parseCoordinate(
+    item.longitude
+    ?? item.lng
+    ?? item.geo_coordinates?.longitude
+    ?? item.geoCoordinates?.longitude,
+  );
 
   const street = Array.isArray(item.street)
     ? item.street.filter(Boolean).join(', ')
@@ -34,6 +51,7 @@ function normalizePickupLocation(item) {
     name,
     lat,
     lng,
+    hasGeo: Number.isFinite(lat) && Number.isFinite(lng),
     phone: item.phone ?? '',
     address1: street,
     city: item.city ?? '',
@@ -191,6 +209,7 @@ export async function renderClosestPickupLocations(
   $status.textContent = 'Loading pickup locations…';
 
   let stores = [];
+  let totalItems = 0;
   try {
     const data = await commerceGraphQL({
       endpoint: effectiveEndpoint,
@@ -200,16 +219,19 @@ export async function renderClosestPickupLocations(
     });
 
     const items = data?.pickupLocations?.items ?? [];
+    totalItems = items.length;
     stores = items
       .map(normalizePickupLocation)
-      .filter((s) => s.code && Number.isFinite(s.lat) && Number.isFinite(s.lng));
+      .filter((s) => s.code);
   } catch (e) {
     $status.textContent = `Couldn’t load pickup locations: ${String(e.message || e)}`;
     return;
   }
 
   if (!stores.length) {
-    $status.textContent = 'No pickup locations available (or missing lat/lng).';
+    $status.textContent = totalItems
+      ? 'Pickup locations were returned, but none had a usable location code.'
+      : 'No pickup locations available.';
     return;
   }
 
@@ -217,7 +239,9 @@ export async function renderClosestPickupLocations(
     const top = sortedStores.slice(0, maxResults);
 
     $results.innerHTML = top.map((s) => {
-      const dist = origin ? haversineDistanceMiles(origin, { lat: s.lat, lng: s.lng }) : null;
+      const dist = (origin && s.hasGeo)
+        ? haversineDistanceMiles(origin, { lat: s.lat, lng: s.lng })
+        : null;
       const distText = dist != null ? `${dist.toFixed(1)} mi away` : '';
 
       return `
@@ -251,7 +275,11 @@ export async function renderClosestPickupLocations(
     });
   }
 
-  $status.textContent = `Showing ${Math.min(maxResults, stores.length)} pickup locations. Use your location to sort by closest.`;
+  const geoEnabledCount = stores.filter((s) => s.hasGeo).length;
+  const geoHint = geoEnabledCount
+    ? 'Use your location to sort by closest.'
+    : 'Distance sorting is unavailable because these locations do not include usable coordinates.';
+  $status.textContent = `Showing ${Math.min(maxResults, stores.length)} pickup locations. ${geoHint}`;
   renderCards(stores, null);
 
   $geoBtn.addEventListener('click', () => {
@@ -264,9 +292,17 @@ export async function renderClosestPickupLocations(
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        if (!geoEnabledCount) {
+          $status.textContent = 'Pickup locations loaded, but distance sorting is unavailable (missing/invalid coordinates).';
+          return;
+        }
+
         const origin = { lat: pos.coords.latitude, lng: pos.coords.longitude };
 
         const sorted = [...stores].sort((a, b) => {
+          if (!a.hasGeo && !b.hasGeo) return 0;
+          if (!a.hasGeo) return 1;
+          if (!b.hasGeo) return -1;
           const da = haversineDistanceMiles(origin, { lat: a.lat, lng: a.lng });
           const db = haversineDistanceMiles(origin, { lat: b.lat, lng: b.lng });
           return da - db;
