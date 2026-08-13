@@ -1,19 +1,117 @@
+/* Watch House editorial footer — dark, multi-column */
 footer {
-    background-color: var(--color-neutral-100);
+    background-color: var(--color-brand-500);
+    color: var(--color-neutral-300);
     font: var(--type-body-2-default-font);
     letter-spacing: var(--type-body-2-default-letter-spacing);
 }
 
+footer .footer {
+    background-color: var(--color-brand-500);
+}
+
 footer .footer > div {
     margin: auto;
-    max-width: 1200px;
-    padding: 40px 24px 24px;
+    max-width: 1280px;
+    padding: var(--spacing-xxbig) var(--spacing-medium) var(--spacing-big);
 }
 
 footer .footer p {
     margin: 0;
 }
 
+/* headings inside footer */
+footer .footer h1,
+footer .footer h2,
+footer .footer h3,
+footer .footer h4,
+footer .footer h5,
+footer .footer h6 {
+    color: var(--color-neutral-50);
+    font-family: var(--type-base-font-family);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin: 0 0 var(--spacing-small);
+}
+
+/* links */
+footer .footer a {
+    color: var(--color-neutral-400);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+footer .footer a:hover {
+    color: var(--color-neutral-50);
+    text-decoration: none;
+}
+
+/* link column lists */
+footer .footer ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xsmall);
+}
+
+/* Columns block used for the link groups */
+footer .footer .columns > div {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--spacing-big) var(--spacing-medium);
+}
+
+@media (min-width: 600px) {
+    footer .footer .columns > div {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 900px) {
+    footer .footer > div {
+        padding: var(--spacing-xxbig) var(--spacing-big) var(--spacing-big);
+    }
+
+    footer .footer .columns > div {
+        grid-template-columns: repeat(4, 1fr);
+        gap: var(--spacing-xbig);
+    }
+}
+
+/* Brand / statement row */
+footer .footer .section.footer-brand h1,
+footer .footer .section.footer-brand h2,
+footer .footer .section.footer-brand h3 {
+    font-size: clamp(2.4rem, 4vw, 3.4rem);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--color-neutral-50);
+}
+
+/* Legal / bottom row */
+footer .footer .section.footer-legal > div {
+    border-top: 1px solid rgb(255 255 255 / 12%);
+    padding-top: var(--spacing-medium);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-small) var(--spacing-medium);
+    align-items: center;
+    justify-content: space-between;
+    font-size: 1.1rem;
+    letter-spacing: 0.06em;
+}
+
+footer .footer .section.footer-legal ul {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: var(--spacing-medium);
+}
+
+/* --- Store switcher (unchanged behavior) --- */
 .storeview-switcher-button {
     background: transparent;
     padding-left: 0;
@@ -64,10 +162,4 @@ footer .footer p {
     display: block;
     list-style-type: none;
     margin-bottom: var(--spacing-small);
-}
-
-@media (min-width: 900px) {
-    footer .footer > div {
-        padding: 40px 32px 24px;
-    }
 }
