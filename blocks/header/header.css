@@ -149,9 +149,12 @@ header nav .nav-brand {
 header nav .nav-brand a {
   grid-area: brand;
   flex-basis: 128px;
-  font: var(--type-headline-1-font);
-  letter-spacing: var(--type-headline-1-letter-spacing);
-  font-weight: bold;
+  font-family: var(--type-base-font-family);
+  font-size: 2rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-brand-700);
 }
 
 li.nav-drop img {
@@ -189,8 +192,12 @@ header nav .nav-sections ul {
 
 header nav .nav-sections ul > li,
 header nav .nav-sections ul > li > a {
-  font: var(--type-body-2-strong-font);
-  letter-spacing: var(--type-body-2-strong-letter-spacing);
+  font-family: var(--type-base-font-family);
+  font-size: 1.3rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-brand-700);
 }
 
 header nav .nav-brand a:hover {
@@ -226,8 +233,8 @@ header nav .nav-sections ul > li:empty {
 
   header nav .nav-sections .default-content-wrapper > ul > li,
   header nav .nav-sections .nav-drop {
-    border-radius: 4px;
-    padding: 0 var(--spacing-small);
+    padding: 0 var(--spacing-xsmall);
+    transition: color 0.2s ease;
   }
 
   header nav .nav-sections .default-content-wrapper > ul > li a {
@@ -261,10 +268,12 @@ header nav .nav-sections ul > li:empty {
     left: 0;
     max-height: var(--desktop-panel-max-height);
     min-height: var(--desktop-panel-min-height);
-    padding: var(--spacing-xbig);
+    padding: var(--spacing-xbig) var(--spacing-big);
     position: absolute;
-    top: var(--spacing-large);
+    top: calc(var(--nav-height) - 1px);
     width: 100%;
+    border-top: 1px solid var(--color-neutral-300);
+    box-shadow: 0 24px 32px -24px rgb(28 26 23 / 18%);
   }
 
   header nav .nav-sections .default-content-wrapper > ul > li .submenu-header {
@@ -285,15 +294,7 @@ header nav .nav-sections ul > li:empty {
   }
 
   header nav .nav-sections .default-content-wrapper > ul > li ul::before {
-    content: '';
-    position: absolute;
-    top: -8px;
-    left: 16px;
-    width: 0;
-    height: 0;
-    border-left: 8px solid transparent;
-    border-right: 8px solid transparent;
-    border-bottom: 8px solid var(--color-neutral-500);
+    content: none;
   }
 
   header nav .nav-sections .default-content-wrapper > ul > li ul > li {
@@ -302,8 +303,10 @@ header nav .nav-sections ul > li:empty {
   }
 
   header nav .nav-sections .default-content-wrapper > ul > li:hover,
+  header nav .nav-sections .default-content-wrapper > ul > li:hover > a,
   header nav .nav-sections .nav-drop[aria-expanded='true'] {
-    background-color: var(--color-neutral-200);
+    color: var(--color-accent-600);
+    background-color: transparent;
   }
 }
 
@@ -342,6 +345,12 @@ header nav .nav-tools-wrapper > button {
   cursor: pointer;
   height: 40px;
   width: 40px;
+  opacity: 0.85;
+  transition: opacity 0.2s ease;
+}
+
+header nav .nav-tools-wrapper > button:hover {
+  opacity: 1;
 }
 
 header nav .nav-tools button.nav-cart-button {

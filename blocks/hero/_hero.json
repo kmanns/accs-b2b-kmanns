@@ -5,7 +5,7 @@
       "id": "hero",
       "plugins": {
         "da": {
-          "unsafeHTML": "<div class=\"hero\"><div><div><picture><source type=\"image/webp\" srcset=\"\"><source type=\"image/jpeg\" srcset=\"\"><img loading=\"lazy\"></picture><h1></h1></div></div></div>"
+          "unsafeHTML": "<div class=\"hero\"><div><div><picture><source type=\"image/webp\" srcset=\"\"><source type=\"image/jpeg\" srcset=\"\"><img loading=\"eager\"></picture><h1></h1><p></p><p><a href=\"\"></a></p></div></div></div>"
         }
       }
     }
@@ -18,7 +18,7 @@
           "component": "reference",
           "valueType": "string",
           "name": "div:nth-child(1)>div:nth-child(1)>picture:nth-child(1)>img:nth-child(3)[src]",
-          "label": "Image",
+          "label": "Image (or video poster)",
           "multi": false
         },
         {
@@ -30,9 +30,38 @@
         },
         {
           "component": "text",
+          "valueType": "string",
+          "name": "videoHref",
+          "label": "Video URL (.mp4 / .webm — optional)",
+          "value": "",
+          "description": "If set, a muted looping background video is used with the image as poster."
+        },
+        {
+          "component": "text",
           "name": "div:nth-child(1)>div:nth-child(1)>h1:nth-child(2)",
           "value": "",
-          "label": "Text",
+          "label": "Heading",
+          "valueType": "string"
+        },
+        {
+          "component": "richtext",
+          "name": "div:nth-child(1)>div:nth-child(1)>p:nth-child(3)",
+          "value": "",
+          "label": "Subtext",
+          "valueType": "string"
+        },
+        {
+          "component": "aem-content",
+          "name": "div:nth-child(1)>div:nth-child(1)>p:nth-child(4)>a:nth-child(1)[href]",
+          "value": "",
+          "label": "CTA link",
+          "valueType": "string"
+        },
+        {
+          "component": "text",
+          "name": "div:nth-child(1)>div:nth-child(1)>p:nth-child(4)>a:nth-child(1)",
+          "value": "",
+          "label": "CTA text",
           "valueType": "string"
         }
       ]

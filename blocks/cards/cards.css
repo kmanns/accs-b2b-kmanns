@@ -7,25 +7,48 @@
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(257px, 1fr));
-  gap: var(--spacing-medium);
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--spacing-big) var(--spacing-medium);
 }
 
+/* borderless, image-forward editorial cards */
 .cards > ul > li {
-  border: var(--shape-border-width-1) solid var(--color-neutral-500);
-  background-color: var(--background-color);
-}
-
-.cards .cards-card-body {
-  margin: var(--spacing-small);
+  border: 0;
+  background-color: transparent;
 }
 
 .cards .cards-card-image {
   line-height: 0;
+  overflow: hidden;
+  background-color: var(--color-neutral-200);
 }
 
 .cards > ul > li img {
   width: 100%;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 3 / 4;
   object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.cards > ul > li:hover img {
+  transform: scale(1.04);
+}
+
+.cards .cards-card-body {
+  margin: var(--spacing-small) 0 0;
+}
+
+.cards .cards-card-body h3,
+.cards .cards-card-body h4,
+.cards .cards-card-body h5 {
+  font-size: 1.6rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  margin: 0 0 var(--spacing-xxsmall);
+}
+
+.cards .cards-card-body p {
+  margin: 0;
+  color: var(--color-neutral-700);
+  font-size: 1.4rem;
 }
