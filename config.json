@@ -4,12 +4,12 @@
       "commerce-endpoint": "https://na1-sandbox.api.commerce.adobe.com/NGqWb1jCB8UhohMLshMAHd/graphql",
       "headers": {
         "all": {
-          "Store": "default"
+          "Store": "frescopaeng"
         },
         "cs": {
-          "Magento-Store-Code": "main_website_store",
-          "Magento-Store-View-Code": "default",
-          "Magento-Website-Code": "base"
+          "Magento-Store-Code": "frescopastore",
+          "Magento-Store-View-Code": "frescopaeng",
+          "Magento-Website-Code": "frescopa"
         }
       },
       "commerce-b2b-enabled": true,
@@ -19,20 +19,20 @@
         "base-currency-code": "USD",
         "environment": "Testing",
         "environment-id": "NGqWb1jCB8UhohMLshMAHd",
-        "store-code": "main_website_store",
-        "store-id": "main_website_store",
-        "store-name": "Default Store View",
-        "store-url": "https://coresaas-subgraph-external:8000/NGqWb1jCB8UhohMLshMAHd/",
-        "store-view-code": "default",
-        "store-view-id": "default",
-        "store-view-name": "Default Store View",
-        "website-code": "base",
-        "website-id": "base",
-        "website-name": "Main Website"
+        "store-code": "frescopastore",
+        "store-id": "frescopastore",
+        "store-name": "Frescopa East Store",
+        "store-url": "https://main--accs-b2b-kmanns--kmanns.aem.live/",
+        "store-view-code": "frescopaeng",
+        "store-view-id": "frescopaeng",
+        "store-view-name": "Frescopa East English",
+        "website-code": "frescopa",
+        "website-id": "frescopa",
+        "website-name": "Frescopa East"
       },
       "plugins": {
         "picker": {
-          "rootCategory": "2"
+          "rootCategory": "76"
         }
       }
     }
